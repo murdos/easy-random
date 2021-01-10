@@ -116,6 +116,12 @@ class BeanValidationAnnotatedBean {
     @Size(min = 2, max = 10)
     private Collection<String> sizedCollection;
 
+    @Size(min = 15)
+    private List<String> bigList;
+
+    @Size(max = 5)
+    private List<String> smallList;
+
     @Size(min = 2, max = 10)
     private List<String> sizedList;
 
@@ -250,6 +256,14 @@ class BeanValidationAnnotatedBean {
 
     public Collection<String> getSizedCollection() {
         return this.sizedCollection;
+    }
+
+    public List<String> getBigList() {
+        return bigList;
+    }
+
+    public List<String> getSmallList() {
+        return smallList;
     }
 
     public List<String> getSizedList() {
@@ -390,6 +404,14 @@ class BeanValidationAnnotatedBean {
 
     public void setSizedCollection(Collection<String> sizedCollection) {
         this.sizedCollection = sizedCollection;
+    }
+
+    public void setBigList(List<String> bigList) {
+        this.bigList = bigList;
+    }
+
+    public void setSmallList(List<String> smallList) {
+        this.smallList = smallList;
     }
 
     public void setSizedList(List<String> sizedList) {

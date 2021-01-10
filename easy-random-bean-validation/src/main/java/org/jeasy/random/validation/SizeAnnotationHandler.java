@@ -56,24 +56,28 @@ class SizeAnnotationHandler implements BeanValidationAnnotationHandler {
     @SuppressWarnings({"unchecked"})
     public Randomizer<?> getRandomizer(Field field) {
         Class<?> fieldType = field.getType();
-        Size sizeAnnotation = ReflectionUtils
-                .getAnnotation(field, Size.class);
+        Size sizeAnnotation = ReflectionUtils.getAnnotation(field, Size.class);
 
-        final int min = sizeAnnotation.min();
-        final int max = sizeAnnotation.max() == Integer.MAX_VALUE ? 255 : sizeAnnotation.max();
+        EasyRandomParameters.Range<Integer> sizeRange = new EasyRandomParameters.Range<>(
+                sizeAnnotation.min(),
+                sizeAnnotation.max() == Integer.MAX_VALUE ? 255 : sizeAnnotation.max()
+        );
+        EasyRandomParameters.Range<Integer> stringLengthRange = reduceRange(sizeRange, parameters.getStringLengthRange());
+        EasyRandomParameters.Range<Integer> collectionSizeRange = reduceRange(sizeRange, parameters.getCollectionSizeRange());
+
         if (easyRandom == null) {
             easyRandom = new EasyRandom(parameters);
         }
 
         if (fieldType.equals(String.class)) {
-            return new StringRandomizer(parameters.getCharset(), min, max, easyRandom.nextLong());
+            return new StringRandomizer(parameters.getCharset(), stringLengthRange.getMin(), stringLengthRange.getMax(), easyRandom.nextLong());
         }
 
         // FIXME: There should be away to reuse code from ArrayPopulator/CollectionPopulator/MapPopulator *without* making them public
 
         if (isArrayType(fieldType)) {
             return (Randomizer<Object>) () -> {
-                int randomSize = new IntegerRangeRandomizer(min, max, parameters.getSeed()).getRandomValue();
+                int randomSize = new IntegerRangeRandomizer(collectionSizeRange.getMin(), collectionSizeRange.getMax(), parameters.getSeed()).getRandomValue();
                 Object result = Array.newInstance(field.getType().getComponentType(), randomSize);
                 for (int i = 0; i < randomSize; i++) {
                     Object randomElement = easyRandom.nextObject(fieldType.getComponentType());
@@ -85,7 +89,7 @@ class SizeAnnotationHandler implements BeanValidationAnnotationHandler {
 
         if (isCollectionType(fieldType)) {
             return (Randomizer<Object>) () -> {
-                int randomSize = new IntegerRangeRandomizer(min, max, parameters.getSeed()).getRandomValue();
+                int randomSize = new IntegerRangeRandomizer(collectionSizeRange.getMin(), collectionSizeRange.getMax(), parameters.getSeed()).getRandomValue();
                 Type fieldGenericType = field.getGenericType();
                 Collection collection;
 
@@ -110,7 +114,7 @@ class SizeAnnotationHandler implements BeanValidationAnnotationHandler {
         }
         if (isMapType(fieldType)) {
             return (Randomizer<Object>) () -> {
-                int randomSize = new IntegerRangeRandomizer(min, max, parameters.getSeed()).getRandomValue();
+                int randomSize = new IntegerRangeRandomizer(collectionSizeRange.getMin(), collectionSizeRange.getMax(), parameters.getSeed()).getRandomValue();
                 Type fieldGenericType = field.getGenericType();
                 Map<Object, Object> map;
 
@@ -123,7 +127,7 @@ class SizeAnnotationHandler implements BeanValidationAnnotationHandler {
                         if (fieldType.isAssignableFrom(EnumMap.class)) {
                             if (isParameterizedType(fieldGenericType)) {
                                 Type type = ((ParameterizedType) fieldGenericType).getActualTypeArguments()[0];
-                                map = new EnumMap((Class<?>)type);
+                                map = new EnumMap((Class<?>) type);
                             } else {
                                 return null;
                             }
@@ -141,7 +145,7 @@ class SizeAnnotationHandler implements BeanValidationAnnotationHandler {
                         for (int index = 0; index < randomSize; index++) {
                             Object randomKey = easyRandom.nextObject((Class<?>) keyType);
                             Object randomValue = easyRandom.nextObject((Class<?>) valueType);
-                            if(randomKey != null) {
+                            if (randomKey != null) {
                                 map.put(randomKey, randomValue);
                             }
                         }
@@ -151,5 +155,12 @@ class SizeAnnotationHandler implements BeanValidationAnnotationHandler {
             };
         }
         return null;
+    }
+
+    private EasyRandomParameters.Range<Integer> reduceRange(EasyRandomParameters.Range<Integer> originalRange, EasyRandomParameters.Range<Integer> otherRange) {
+        boolean rangesOverlaps = originalRange.getMin() <= otherRange.getMax() && originalRange.getMax() >= otherRange.getMin();
+        int min = rangesOverlaps ? Math.max(originalRange.getMin(), otherRange.getMin()) : originalRange.getMin();
+        int max = rangesOverlaps ? Math.min(originalRange.getMax(), otherRange.getMax()) : originalRange.getMax();
+        return new EasyRandomParameters.Range<>(min, max);
     }
 }

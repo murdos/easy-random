@@ -75,6 +75,46 @@ class BeanValidationTest {
     }
 
     @Test
+    void sizeConstraintRangeShouldBeReducedIfItOverlapsWithCollectionSizeRangeParameters() {
+
+        EasyRandomParameters parameters = new EasyRandomParameters()
+                .collectionSizeRange(3, 5)
+                .stringLengthRange(6, 8);
+        easyRandom = new EasyRandom(parameters);
+        BeanValidationAnnotatedBean bean = easyRandom.nextObject(BeanValidationAnnotatedBean.class);
+
+        assertThat(bean.getSizedList().size()).isBetween(3, 5);
+        assertThat(bean.getSizedSet().size()).isBetween(3, 5);
+        assertThat(bean.getSizedCollection().size()).isBetween(3, 5);
+        assertThat(bean.getSizedMap().size()).isBetween(3, 5);
+        assertThat(bean.getSizedArray().length).isBetween(3, 5);
+        assertThat(bean.getSizedString().length()).isBetween(6, 8);
+        assertThat(bean.getBriefMessage().length()).isBetween(6, 8);
+    }
+
+    @Test
+    void sizeConstraintRangeShouldNotBeReducedIfItDoesntOverlapsWithCollectionSizeRangeParameters() {
+
+        EasyRandomParameters parameters = new EasyRandomParameters()
+                .collectionSizeRange(16, 20)
+                .stringLengthRange(11, 15);
+        easyRandom = new EasyRandom(parameters);
+        BeanValidationAnnotatedBean bean = easyRandom.nextObject(BeanValidationAnnotatedBean.class);
+
+        // fields with @Size(min = 2, max = 10)
+        assertThat(bean.getSizedList().size()).isBetween(2, 10);
+        assertThat(bean.getSizedSet().size()).isBetween(2, 10);
+        assertThat(bean.getSizedCollection().size()).isBetween(2, 10);
+        assertThat(bean.getSizedMap().size()).isBetween(2, 10);
+        assertThat(bean.getSizedArray().length).isBetween(2, 10);
+        assertThat(bean.getBriefMessage().length()).isBetween(2, 10);
+
+        assertThat(bean.getSizedString().length()).isBetween(11, 15); // @Size(min = 2)
+        assertThat(bean.getSmallList().size()).isBetween(0, 5); // @Size(max = 5)
+        assertThat(bean.getBigList().size()).isBetween(16, 20); // @Size(min = 15)
+    }
+
+    @Test
     void generatedValuesShouldBeValidAccordingToValidationConstraints() {
         BeanValidationAnnotatedBean bean = easyRandom.nextObject(BeanValidationAnnotatedBean.class);
 
